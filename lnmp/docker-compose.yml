@@ -1,0 +1,75 @@
+version: '3'
+services:
+  nginx:
+    image: ${NGINX_IMAGE}
+    restart: unless-stopped
+    container_name: lnmp-nginx
+    user: root
+    privileged: true
+    depends_on:
+      - php
+    ports: 
+      - ${WEB_PORT}:80
+      - ${WEB_SSL}:443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${WEB_ROOT-./www}:/usr/share/nginx/html
+      - ${WEB_CONF-./nginx/conf.d}:/etc/nginx/conf.d
+      - ${WEB_LOGS-./nginx/logs}:/var/log/nginx
+      - ${WEB_CERT-./nginx/certs}:/etc/nginx/certs
+
+  php:
+    # build: ./php
+    image: ${PHP_IMAGE}
+    container_name: lnmp-php
+    restart: unless-stopped
+    volumes:
+      - ${WEB_ROOT-./www}:/var/www/html
+      # - ${PHP_INI-./php/config/php.ini}:/usr/local/etc/php/php.ini
+      # - ./php/config/php-fpm.conf:/usr/local/etc/php-fpm.conf
+      # - ./php/config/php-fpm.d:/usr/local/etc/php-fpm.d
+
+  mysql:
+    image: ${DATABASE}
+    container_name: lnmp-mysql
+    restart: unless-stopped
+    ports:
+      - ${MYSQL_PORT}:3306
+    volumes:
+      - ./mysql/my.cnf:/etc/my.cnf
+      - ${MYSQL_DATA-./mysql/data}:/var/lib/mysql
+      - ${MYSQL_LOGS-./mysql/log}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  phpmyadmin:
+    image: ${PHPMYADMIN_IMAGE}
+    container_name: 'lnmp-phpmyadmin'
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: ${MYSQL_USER}
+      PMA_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - '8080:80'
+    volumes: 
+      - ${MYSQL_SESSION-./data/session}:/sessions
+
+  redis:
+    image: ${REDIS_IMAGE}
+    container_name: lnmp-redis
+    restart: unless-stopped
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      # - ./redis/redis.conf/:/usr/local/etc/redis.conf
+      - ${REDIS_DATA-./redis/data}:/usr/local/redis/data
+      - ./redis/redis.log:/usr/local/redis/redis.log

@@ -1,0 +1,80 @@
+version: '3'
+services:
+
+  redis:
+    image: ${redis_image}
+    container_name: hub-redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - redis:/data
+
+  hub:
+    image: ${hub_image}
+    container_name: hub
+    restart: unless-stopped
+    user: root
+    privileged: false
+    # environment:
+    #   - CACHE_REDIS_HOST=redis
+    #   - CACHE_REDIS_PORT=6379
+    # #   - REGISTRY_HTTP_ADDR=0.0.0.0:443
+    #   - REGISTRY_HTTP_TLS_CERTIFICATE=/auth/example.com.crt
+    #   - REGISTRY_HTTP_TLS_KEY=/auth/example.com.key
+    #   - REGISTRY_AUTH=htpasswd
+    #   - REGISTRY_AUTH_HTPASSWD_REALM=Registry_Realm
+    #   - REGISTRY_AUTH_HTPASSWD_PATH=/auth/passwd
+    depends_on:
+      - redis
+    # ports:
+      # - ${hub_port}:5000
+    expose:
+      - "5000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - hub:/var/lib/registry
+      - ./conf/passwd:/auth/passwd:ro
+      - ./conf/hub.yml:/etc/docker/registry/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-s", "localhost:5000/v2/"]
+      interval: 5s
+      timeout: 10s
+
+  ui:
+    image: ${ui_image}
+    container_name: hub-ui
+    expose:
+      - "80"
+    environment:
+      REGISTRY_URL: "http://hub:5000"
+      REGISTRY_TITLE: "My Private Docker Registry"
+      DELETE_IMAGES: "true"
+      PULL_URL: "example.com"
+      NGINX_PROXY_HEADER_X_Forwarded_For: "$$proxy_add_x_forwarded_for"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./conf/nginx.env:/etc/nginx/.env:ro
+    depends_on:
+      - hub
+
+  nginx:
+    image: ${nginx_image}
+    container_name: hub-nginx
+    restart: unless-stopped
+    depends_on:
+      - hub
+      - ui
+    ports:
+      - ${nginx_port}:80
+      - ${nginx_ssl}:443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./conf/example.com.conf:/etc/nginx/conf.d/example.com.conf:ro
+      - ./conf/example.com.crt:/etc/nginx/certs/example.com.crt:ro
+      - ./conf/example.com.key:/etc/nginx/certs/example.com.key:ro
+
+volumes:
+  redis:
+  hub:

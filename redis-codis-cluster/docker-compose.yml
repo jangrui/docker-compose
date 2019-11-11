@@ -1,0 +1,148 @@
+version: '3'
+services:
+  zk:
+    container_name: codis-zk
+    image: ${zk_image}
+    restart: unless-stopped
+    ports:
+      - ${zk_port}:2181
+
+  dashboard:
+    container_name: codis-dashboard
+    image: ${codis_image}
+    restart: unless-stopped
+    ports: 
+      - ${dashboard_port}:18080
+    volumes:
+      - ./config/dashboard.toml:/codis/dashboard.toml
+      - ./log:/codis/log
+    command:
+      codis-dashboard -l log/dashboard.log -c dashboard.toml --host-admin ${hostip}:28080
+  
+  proxy1:
+    container_name: codis-proxy1
+    image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${proxy1_port1}:11080
+      - ${proxy1_port2}:19000
+    volumes:
+      - ./config/proxy.toml:/codis/proxy.toml
+      - ./log:/codis/log
+    command:
+      codis-proxy -l log/proxy2.log -c proxy.toml --host-admin ${hostip}:${proxy1_port1} --host-proxy ${hostip}:${proxy1_port2}
+
+  proxy2:
+    container_name: codis-proxy2
+    image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${proxy2_port1}:11080
+      - ${proxy2_port2}:19000
+    volumes:
+      - ./config/proxy.toml:/codis/proxy.toml
+      - ./log:/codis/log
+    command:
+      codis-proxy -l log/proxy2.log -c proxy.toml --host-admin ${hostip}:${proxy2_port1} --host-proxy ${hostip}:${proxy2_port2}
+
+  proxy3:
+    container_name: codis-proxy3
+    image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${proxy3_port1}:11080
+      - ${proxy3_port2}:19000
+    volumes:
+      - ./config/proxy.toml:/codis/proxy.toml
+      - ./log:/codis/log
+    command:
+      codis-proxy -l log/proxy3.log -c proxy.toml --host-admin ${hostip}:${proxy3_port1} --host-proxy ${hostip}:${proxy3_port2}
+
+  codis1:
+    container_name: codis1
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis1_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26371.log
+  
+  codis2:
+    container_name: codis2
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis2_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26372.log
+
+  codis3:
+    container_name: codis3
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis3_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26373.log
+
+  codis4:
+    container_name: codis4
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis4_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26374.log
+
+  codis5:
+    container_name: codis5
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis5_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26375.log
+
+  codis6:
+    container_name: codis6
+    image: ${redis_image}
+    # image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${codis6_port}:6379
+    volumes:
+      - ./config/redis.conf:/codis/redis.conf
+      - ./log:/codis/log
+    command:
+      codis-server --logfile log/codis_26376.log
+  
+  fe:
+    container_name: codis-fe
+    image: ${codis_image}
+    restart: unless-stopped
+    ports:
+      - ${fe_port}:8080
+    volumes:
+      - ./log:/codis/log
+    command:
+      codis-fe -l log/fe.log --zookeeper ${hostip}:2181 --listen=0.0.0.0:8080 --assets=/gopath/src/github.com/CodisLabs/codis/bin/assets

@@ -6,5 +6,6 @@ Some typical docker compose examples.
 
 - [LAMP](lamp)
 - [LNMP](lnmp)
+- [WordPress](wordpress)
 - [Registry Mirror](registry-mirror)
 - [Redis Codis Cluster](redis-codis-cluster)

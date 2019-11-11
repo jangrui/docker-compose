@@ -1,0 +1,58 @@
+version: '3'
+services:
+  db:
+    container_name: wordpress-db
+    image: ${db_image}
+    restart: unless-stopped
+    expose:
+      - "3306"
+    # ports:
+      # - 33306:3306
+    volumes:
+      - ${db_data-./db}:/var/lib/mysql
+      - ${db_logs-./dblog}:/var/log/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${db_passwd}
+      MYSQL_DATABASE: ${db_name}
+      MYSQL_USER: ${db_user}
+      MYSQL_PASSWORD: ${db_passwd}
+
+  # mysql php manager
+  adminer:
+    container_name: wordpress-adminer
+    image: ${adminer_image}
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - ${adminer_port}:8080
+
+  wordpress:
+    container_name: wordpress
+    image: ${wp_image}
+    restart: unless-stopped
+    depends_on:
+      - db
+    expose:
+      - "80"
+    # ports:
+      # - 81:80
+    volumes:
+      - ${web_home-./wp-content}:/var/www/html/wp-content
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${db_name}
+      WORDPRESS_DB_USER: ${db_user}
+      WORDPRESS_DB_PASSWORD: ${db_passwd}
+
+  nginx:
+    container_name: wordpress-nginx
+    image: ${nginx_image}
+    restart: unless-stopped
+    ports:
+      - ${nginx_port}:80
+      - ${nginx_ssl}:443
+    volumes:
+      - ${nginx_conf-./nginx/conf.d}:/etc/nginx/conf.d
+      - ${nginx_logs-./nginx/logs}:/var/log/nginx
+      - ${nginx_cert-./nginx/cert}:/etc.nginx/cert

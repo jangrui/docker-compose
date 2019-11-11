@@ -9,3 +9,4 @@ Some typical docker compose examples.
 - [WordPress](wordpress)
 - [Registry Mirror](registry-mirror)
 - [Redis Codis Cluster](redis-codis-cluster)
+- [Zookeeper Cluster](zookeeper-cluster)

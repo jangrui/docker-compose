@@ -1,7 +1,7 @@
 FROM golang:1.13.4
 
-RUN sed -i 's,http://deb.debian.org,https://mirrors.aliyun.com,g' /etc/apt/sources.list \
-    && sed -i 's,http://security.debian.org,https://mirrors.aliyun.com,g' /etc/apt/sources.list
+RUN sed -i 's,deb.debian.org,mirrors.aliyun.com,g' /etc/apt/sources.list \
+    && sed -i 's,security.debian.org,mirrors.aliyun.com,g' /etc/apt/sources.list
 
 RUN apt-get update \
     && apt-get install -y autoconf \

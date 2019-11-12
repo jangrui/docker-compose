@@ -1,0 +1,70 @@
+version: '3'
+services:
+  master:
+    image: ${redis_image}
+    container_name: redis-cluster-master
+    command: redis-server /data/redis.conf
+    ports:
+      - "${redis_master_port}:6379"
+    volumes:
+      - ./config/redis.conf:/data/redis.conf
+  slave_1:
+    image: ${redis_image}
+    container_name: redis-cluster_slave-1
+    command: redis-server /data/redis.conf --slaveof redis-master 6379
+    links:
+      - master:redis-master
+    ports:
+      - "${redis_port1}:6379"
+    volumes:
+      - ./config/redis.conf:/data/redis.conf
+  slave_2:
+    image: ${redis_image}
+    container_name: redis-cluster_slave-2
+    command: redis-server /data/redis.conf --slaveof redis-master 6379
+    links:
+      - master:redis-master
+    ports:
+      - "${redis_port2}:6379"
+    volumes:
+      - ./config/redis.conf:/data/redis.conf
+  sentinel_1:
+    image: ${sentinel_image}
+    container_name: redis-cluster_sentinel-1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    environment:
+      - SENTINEL_DOWN_AFTER=5000
+      - SENTINEL_FAILOVER=5000
+    links:
+      - master:redis-master
+      - slave_1
+      - slave_2
+    ports:
+      - "${sentinel_port1}:6379"
+      - "${sentinel_host1}:26379"
+  sentinel_2:
+    image: ${sentinel_image}
+    container_name: redis-cluster_sentinel-2
+    environment:
+      - SENTINEL_DOWN_AFTER=5000
+      - SENTINEL_FAILOVER=5000
+    links:
+      - master:redis-master
+      - slave_1
+      - slave_2
+    ports:
+      - "${sentinel_port2}:6379"
+      - "${sentinel_host2}:26379"
+  sentinel_3:
+    image: ${sentinel_image}
+    container_name: redis-cluster_sentinel-3
+    environment:
+      - SENTINEL_DOWN_AFTER=5000
+      - SENTINEL_FAILOVER=5000
+    links:
+      - master:redis-master
+      - slave_1
+      - slave_2
+    ports:
+      - "${sentinel_port3}:6379"
+      - "${sentinel_host3}:26379"

@@ -1,0 +1,63 @@
+version: '3'
+services:
+  MasterNode:
+    container_name: mysql-master
+    image: jangrui/mysql-replicas-cluster:5.7
+    environment:
+      MySQL_Role: Master
+      MYSQL_ROOT_PASSWORD: password
+      REPLICATION_USER: repl
+      REPLICATION_PASSWORD: password
+      MasterIP: MasterNode
+      Slave1IP: Slave1Node
+      Slave2IP: Slave2Node
+      MySQLPort: 3306
+    tty: true
+    ports:
+     - 3307:3306
+    volumes:
+    - master:/var/lib/mysql
+    stdin_open: true
+
+  Slave1Node:
+    container_name: mysql-slave1
+    image: jangrui/mysql-replicas-cluster:5.7
+    environment:
+      MySQL_Role: Slave1
+      MYSQL_ROOT_PASSWORD: password
+      REPLICATION_USER: repl
+      REPLICATION_PASSWORD: password
+      MasterIP: MasterNode
+      Slave1IP: Slave1Node
+      Slave2IP: Slave2Node
+      MySQLPort: 3306
+    tty: true
+    ports:
+     - 3308:3306
+    volumes:
+    - slave1:/var/lib/mysql
+    stdin_open: true
+
+  Slave2Node:
+    container_name: mysql-slave2
+    image: jangrui/mysql-replicas-cluster:5.7
+    environment:
+      MySQL_Role: Slave2
+      MYSQL_ROOT_PASSWORD: password
+      REPLICATION_USER: repl
+      REPLICATION_PASSWORD: password
+      MasterIP: MasterNode
+      Slave1IP: Slave1Node
+      Slave2IP: Slave2Node
+      MySQLPort: 3306
+    tty: true
+    ports:
+     - 3309:3306
+    volumes:
+    - slave2:/var/lib/mysql
+    stdin_open: true
+
+volumes:
+  master:
+  slave1:
+  slave2:

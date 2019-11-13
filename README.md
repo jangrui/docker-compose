@@ -4,6 +4,7 @@ Some typical docker compose examples.
 
 ## Examples Files
 
+- [ELK](elk)
 - [LAMP](lamp)
 - [LNMP](lnmp)
 - [WordPress](wordpress)

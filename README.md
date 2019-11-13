@@ -12,4 +12,5 @@ Some typical docker compose examples.
 - [Redis Cluster](redis-cluster)
 - [Redis Codis Cluster](redis-codis-cluster)
 - [MySQL Galera Cluster](mysql-galera-cluster)
+- [MySQL InnoDB Cluster](mysql-innodb-cluster)
 - [Zookeeper Cluster](zookeeper-cluster)

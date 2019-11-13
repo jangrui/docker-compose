@@ -1,0 +1,76 @@
+version: '3'
+services:
+  server-1: &server
+    container_name: innodb-cluster-node1
+    image: "mysql/mysql-server:${MYSQL_VERSION}"
+    restart: unless-stopped
+    ports:
+      - "30001:3306"
+      - "40001:33060"
+    command:
+      - "--server_id=1"
+    environment:
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_ROOT_HOST
+    volumes:
+      - "./my.cnf:/etc/my.cnf"
+      - "./data/server-1:/var/lib/mysql"
+    restart: always
+
+  server-2:
+    <<: *server
+    container_name: innodb-cluster-node2
+    restart: unless-stopped
+    ports:
+      - "30002:3306"
+      - "40002:33060"
+    command:
+      - "--server_id=2"
+    volumes:
+      - "./my.cnf:/etc/my.cnf"
+      - "./data/server-2:/var/lib/mysql"
+
+  server-3:
+    <<: *server
+    container_name: innodb-cluster-node3
+    restart: unless-stopped
+    ports:
+      - "30003:3306"
+      - "40003:33060"
+    command:
+      - "--server_id=3"
+    volumes:
+      - "./my.cnf:/etc/my.cnf"
+      - "./data/server-3:/var/lib/mysql"
+
+  router:
+    container_name: innodb-cluster-router
+    image: "mysql/mysql-router:${MYSQL_VERSION}"
+    restart: unless-stopped
+    ports:
+      - "6446:6446"
+      - "6447:6447"
+    volumes:
+      - "./data/router:/var/lib/mysqlrouter"
+    environment: &other-environment
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_HOST
+      - MYSQL_PORT
+      - MYSQL_CLUSTER_NAME
+      - MYSQL_CLUSTER_OPTIONS
+      - MYSQL_INNODB_NUM_MEMBERS
+    restart: unless-stopped
+    depends_on: &other-depends
+      - server-1
+      - server-2
+      - server-3
+
+  shell:
+    container_name: innodb-cluster-shell
+    image: "mysql/mysql-server:${MYSQL_VERSION}"
+    volumes:
+      - "./shell-entrypoint.sh:/bin/shell-entrypoint"
+    environment: *other-environment
+    depends_on: *other-depends
+    entrypoint: "/bin/shell-entrypoint"

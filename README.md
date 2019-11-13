@@ -11,4 +11,5 @@ Some typical docker compose examples.
 - [Registry Mirror](registry-mirror)
 - [Redis Cluster](redis-cluster)
 - [Redis Codis Cluster](redis-codis-cluster)
+- [MySQL Galera Cluster](mysql-galera-cluster)
 - [Zookeeper Cluster](zookeeper-cluster)

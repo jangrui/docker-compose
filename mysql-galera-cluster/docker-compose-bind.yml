@@ -1,0 +1,81 @@
+version: '3'
+services:
+  ha:
+    image: ${ha_image}
+    container_name: galera-ha
+    restart: unless-stopped
+    ports:
+      - 4000:4000
+      - ${port_ha}:3306
+    volumes: 
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    command: |
+      haproxy -f /usr/local/etc/haproxy/haproxy.cfg
+    healthcheck:
+      test: |
+        [ `ps -ef|grep -v ps|wc -l` -ge 1 ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  db1:
+    image: ${galera_image}
+    container_name: galera-db1
+    restart: unless-stopped
+    privileged: true
+    environment:
+      MYSQL_ROOT_PASSWORD: ${root_passwd}
+      XTRABACKUP_PASSWORD: ${root_passwd}
+      CLUSTER_NAME: GALERA_CLUSTER
+      # MYSQL_DATABASE: ${db_name}
+      # MYSQL_USER: ${db_user}
+      # MYSQL_PASSWORD: ${db_passwd}
+    ports:
+      - ${port_db1}:3306
+    volumes:
+      - ${data}db1:/var/lib/mysql
+      - ${data}dblog1:/var/log/mysql
+
+  db2:
+    image: ${galera_image}
+    container_name: galera-db2
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      - db1
+    environment:
+      MYSQL_ROOT_PASSWORD: ${root_passwd}
+      XTRABACKUP_PASSWORD: ${root_passwd}
+      CLUSTER_NAME: GALERA_CLUSTER
+      CLUSTER_JOIN: galera-db1
+    ports:
+      - ${port_db2}:3306
+    volumes:
+      - ${data}db2:/var/lib/mysql
+      - ${data}dblog2:/var/log/mysql
+
+  db3:
+    image: ${galera_image}
+    container_name: galera-db3
+    restart: unless-stopped
+    privileged: true
+    depends_on:
+      - db1
+    environment:
+      MYSQL_ROOT_PASSWORD: ${root_passwd}
+      XTRABACKUP_PASSWORD: ${root_passwd}
+      CLUSTER_NAME: GALERA_CLUSTER
+      CLUSTER_JOIN: galera-db1
+    ports:
+      - ${port_db3}:3306
+    volumes:
+      - ${data}db3:/var/lib/mysql
+      - ${data}dblog3:/var/log/mysql
+
+# volumes:
+#   db1:
+#   db2:
+#   db3:
+#   dblog1:
+#   dblog2:
+#   dblog3:

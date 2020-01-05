@@ -1,0 +1,148 @@
+version: '3'
+services:
+  db:
+    image: mysql:latest
+    container_name: zabbix-proxy-db
+    restart: unless-stopped
+    stop_grace_period: 1m
+    user: root
+    environment: 
+      DB_SERVER_HOST: zabbix-proxy-db
+      MYSQL_ROOT_PASSWORD: proxy
+      MYSQL_DATABASE: proxy
+      MYSQL_USER: proxy
+      MYSQL_PASSWORD: proxy
+    ports: 
+      - 3307:3306
+    volumes: 
+      - ./zbx_env/etc/localtime:/etc/localtime:ro
+      - ./zbx_env/var/lib/mysql:/var/lib/mysql
+    command: 
+      mysqld
+      --character-set-server=utf8
+      --collation-server=utf8_bin
+      --default-authentication-plugin=mysql_native_password
+    security_opt:
+      - seccomp:unconfined
+
+  java-gateway:
+    build: ./build/java-gateway
+    image: jangrui/zabbix-java-gateway:alpine-latest
+    container_name: zabbix-java-gateway
+    restart: unless-stopped
+    stop_grace_period: 5s
+    user: root
+    ports:
+      - 10052:10052
+    volumes: 
+      - ./zbx_env/usr/sbin/zabbix_java/ext_lib:/usr/sbin/zabbix_java/ext_lib:rw
+    labels:
+      com.zabbix.description: "Zabbix Java Gateway"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "java-gateway"
+      com.zabbix.os: "alpine"
+
+  snmptraps:
+    build: ./build/snmptraps
+    image: jangrui/zabbix-snmptraps:alpine-latest
+    container_name: zabbix-snmptraps
+    restart: unless-stopped
+    stop_grace_period: 5s
+    user: root
+    ports: 
+      - 162:162/udp
+    volumes: 
+      - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:rw
+      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:rw
+    labels:
+      com.zabbix.description: "Zabbix snmptraps"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "snmptraps"
+      com.zabbix.os: "ubuntu"
+
+  proxy:
+    container_name: zabbix-proxy
+    build: ./build/proxy
+    image: jangrui/zabbix-proxy-mysql:alpine-latest
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: root
+    depends_on:
+      - db
+      - java-gateway
+      - snmptraps
+      - server
+    links:
+      - db:zabbix-proxy-db
+      - java-gateway:zabbix-java-gateway
+      - snmptraps:zabbix-snmptraps
+      - server:zabbix-server
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+    environment: 
+      TZ: Asia/Shanghai
+      ZBX_SERVER_HOST: zabbix.jangrui.com
+      ZBX_HOSTNAME: $HOSTNAME
+      DB_SERVER_HOST: zabbix-proxy-db
+      MYSQL_ROOT_PASSWORD: zabbix
+      MYSQL_DATABASE: proxy
+      MYSQL_USER: proxy
+      MYSQL_PASSWORD: proxy
+    ports:
+      - 10051:10051
+    volumes:
+      - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts
+      - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules
+      - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
+      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs
+      - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps
+      - ./zbx_env/var/lib/zabbix/ssl/ssl_ca:/var/lib/zabbix/ssl/ssl_ca
+      - ./zbx_env/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys
+      - ./zbx_env/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs
+    labels:
+      com.zabbix.description: "Zabbix proxy with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-proxy"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "alpine"
+
+  agent:
+    build: 
+      context: ./build/agent
+      dockerfile: Dockerfile-centos
+      # dockerfile: Dockerfile-alpine
+      # dockerfile: Dockerfile-ubuntu
+    image: jangrui/zabbix-agent:centos-latest
+    # image: jangrui/zabbix-agent:ubuntu-latest
+    # image: jangrui/zabbix-agent:alpine-latest
+    container_name: zabbix-agent
+    restart: unless-stopped
+    stop_grace_period: 5s
+    privileged: true
+    user: root
+    pid: host
+    hostname: $HOSTNAME
+    links:
+      - proxy:zabbix-proxy
+    environment:
+      ZBX_SERVER_HOST: zabbix-proxy
+      ZBX_HOSTNAME: $HOSTNAME
+      ZBX_METADATAITEM: system.uname
+      ZBX_HOSTNAMEITEM: system.hostname
+      ZBX_UNSAFEUSERPARAMETERS: 1
+    ports:
+      - 10050:10050
+    volumes:
+      - ./zbx_env/etc/zabbix/zabbix_agentd.d:/etc/zabbix/zabbix_agentd.d:ro
+      - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+      - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+    labels:
+      com.zabbix.description: "Zabbix agent"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-agentd"
+      com.zabbix.os: "alpine"

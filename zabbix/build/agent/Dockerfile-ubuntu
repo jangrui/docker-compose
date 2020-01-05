@@ -1,0 +1,9 @@
+FROM zabbix/zabbix-agent:ubuntu-latest
+
+USER root
+
+RUN apt-get -y --no-install-recommends update && \
+apt-get -y install tzdata && \
+apt-get -y autoremove && \
+apt-get -y clean && \
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime

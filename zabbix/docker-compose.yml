@@ -1,0 +1,262 @@
+version: '3'
+services: 
+  db:
+    image: mysql:latest
+    container_name: zabbix-db
+    restart: unless-stopped
+    stop_grace_period: 1m
+    user: root
+    environment: 
+      DB_SERVER_HOST: zabbix-mysql
+      MYSQL_ROOT_PASSWORD: zabbix
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+    ports: 
+      - 3306:3306
+    volumes: 
+      - ./zbx_env/etc/localtime:/etc/localtime:ro
+      - ./zbx_env/var/lib/mysql:/var/lib/mysql
+    command: 
+      mysqld
+      --character-set-server=utf8
+      --collation-server=utf8_bin
+      --default-authentication-plugin=mysql_native_password
+    security_opt:
+      - seccomp:unconfined
+
+  java-gateway:
+    build: ./build/java-gateway
+    image: jangrui/zabbix-java-gateway:alpine-latest
+    container_name: zabbix-java-gateway
+    restart: unless-stopped
+    stop_grace_period: 5s
+    user: root
+    ports:
+      - 10052:10052
+    volumes: 
+      - ./zbx_env/usr/sbin/zabbix_java/ext_lib:/usr/sbin/zabbix_java/ext_lib:rw
+    labels:
+      com.zabbix.description: "Zabbix Java Gateway"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "java-gateway"
+      com.zabbix.os: "alpine"
+
+  snmptraps:
+    build: ./build/snmptraps
+    image: jangrui/zabbix-snmptraps:alpine-latest
+    container_name: zabbix-snmptraps
+    restart: unless-stopped
+    stop_grace_period: 5s
+    user: root
+    ports: 
+      - 162:162/udp
+    volumes: 
+      - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:rw
+      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:rw
+    labels:
+      com.zabbix.description: "Zabbix snmptraps"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "snmptraps"
+      com.zabbix.os: "ubuntu"
+
+  server:
+    build: ./build/server
+    image: jangrui/zabbix-server-mysql:alpine-latest
+    container_name: zabbix-server
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: root
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65000
+      - net.ipv4.conf.all.accept_redirects=0
+      - net.ipv4.conf.all.secure_redirects=0
+      - net.ipv4.conf.all.send_redirects=0
+    environment: 
+      DB_SERVER_HOST: zabbix-mysql
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+      MYSQL_ROOT_PASSWORD: zabbix
+      ZBX_JAVAGATEWAY: zabbix-java-gateway
+      ZBX_JAVAGATEWAY_ENABLE: "true"
+      ZBX_STARTJAVAPOLLERS: 5
+      ZBX_ENABLE_SNMP_TRAPS: "true"
+    depends_on: 
+      - java-gateway
+      - db
+      - snmptraps
+    links:
+      - db:zabbix-mysql
+      - java-gateway:zabbix-java-gateway
+      - snmptraps:zabbix-snmptraps
+    ports: 
+      - 10051:10051
+    volumes: 
+      - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts
+      - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts
+      - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules
+      - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
+      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs
+      - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps
+      - ./zbx_env/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs
+      - ./zbx_env/var/lib/zabbix/ssl/ssl_ca:/var/lib/zabbix/ssl/ssl_ca
+      - ./zbx_env/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys
+      - ./zbx_env/var/lib/zabbix/export:/var/lib/zabbix/export
+      - ./zbx_env/var/log/zabbix:/var/log/zabbix
+    labels:
+      com.zabbix.description: "Zabbix server with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-server"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "alpine"
+
+  web:
+    build: ./build/web
+    image: jangrui/zabbix-web-nginx-mysql:alpine-latest
+    container_name: zabbix-web
+    restart: unless-stopped
+    stop_grace_period: 10s
+    user: root
+    sysctls:
+      - net.core.somaxconn=65535
+    environment: 
+      PHP_TZ: Asia/Shanghai
+      DB_SERVER_HOST: zabbix-mysql
+      MYSQL_ROOT_PASSWORD: zabbix
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbix
+      ZBX_SERVER_NAME: Composed installation
+    depends_on: 
+      - db
+      - server
+    links:
+      - db:zabbix-mysql
+      - server:zabbix-server
+    ports: 
+      - 10049:80
+    volumes: 
+      - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    labels:
+      com.zabbix.description: "Zabbix frontend on Nginx web-server with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-frontend"
+      com.zabbix.webserver: "nginx"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "alpine"
+
+  proxy:
+    container_name: zabbix-proxy
+    build: ./build/proxy
+    image: jangrui/zabbix-proxy-mysql:alpine-latest
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: root
+    depends_on:
+      - db
+      - java-gateway
+      - snmptraps
+      - server
+    links:
+      - db:zabbix-proxy-db
+      - java-gateway:zabbix-java-gateway
+      - snmptraps:zabbix-snmptraps
+      - server:zabbix-server
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+    environment: 
+      TZ: Asia/Shanghai
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_HOSTNAME: $HOSTNAME
+      DB_SERVER_HOST: zabbix-proxy-db
+      MYSQL_ROOT_PASSWORD: zabbix
+      MYSQL_DATABASE: proxy
+      MYSQL_USER: proxy
+      MYSQL_PASSWORD: proxy
+    ports:
+      - 10061:10051
+    volumes:
+      - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts
+      - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules
+      - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys
+      - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs
+      - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps
+      - ./zbx_env/var/lib/zabbix/ssl/ssl_ca:/var/lib/zabbix/ssl/ssl_ca
+      - ./zbx_env/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys
+      - ./zbx_env/var/lib/zabbix/ssl/certs:/var/lib/zabbix/ssl/certs
+    labels:
+      com.zabbix.description: "Zabbix proxy with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-proxy"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "alpine"
+
+  agent:
+    build: 
+      context: ./build/agent
+      dockerfile: Dockerfile-centos
+      # dockerfile: Dockerfile-alpine
+      # dockerfile: Dockerfile-ubuntu
+    image: jangrui/zabbix-agent:centos-latest
+    # image: jangrui/zabbix-agent:ubuntu-latest
+    # image: jangrui/zabbix-agent:alpine-latest
+    container_name: zabbix-agent
+    restart: unless-stopped
+    stop_grace_period: 5s
+    privileged: true
+    user: root
+    pid: host
+    hostname: $HOSTNAME
+    links:
+      - server:zabbix-server
+      - proxy:zabbix-proxy
+    environment:
+      ZBX_SERVER_HOST: zabbix-proxy
+      ZBX_HOSTNAME: $HOSTNAME
+      ZBX_METADATAITEM: system.uname
+      ZBX_HOSTNAMEITEM: system.hostname
+      ZBX_UNSAFEUSERPARAMETERS: 1
+      ZBX_TIMEOUT: 5
+    ports:
+      - 10050:10050
+    volumes:
+      - ./zbx_env/etc/zabbix/zabbix_agentd.d:/etc/zabbix/zabbix_agentd.d:ro
+      - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+      - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+      - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+    labels:
+      com.zabbix.description: "Zabbix agent"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-agentd"
+      com.zabbix.os: "alpine"
+
+  grafana:
+    container_name: zabbix-grafana
+    image: grafana/grafana
+    restart: unless-stopped
+    user: root
+    environment: 
+      TZ: Asia/Shanghai
+      GF_INSTALL_PLUGINS: alexanderzobnin-zabbix-app
+    ports:
+      - 3000:3000
+    volumes: 
+      # - ./grafana/conf:/etc/grafana
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/logs:/var/log/grafana

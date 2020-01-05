@@ -7,6 +7,7 @@ Some typical docker compose examples.
 - [ELK](elk)
 - [LAMP](lamp)
 - [LNMP](lnmp)
+- [Zabbix](zabbix)
 - [WordPress](wordpress)
 - [Minio Cluster](minio-cluster)
 - [Registry Mirror](registry-mirror)

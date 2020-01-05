@@ -1,0 +1,6 @@
+FROM zabbix/zabbix-agent:alpine-latest
+
+USER root
+
+RUN apk add --no-cache --clean-protected tzdata && \
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime

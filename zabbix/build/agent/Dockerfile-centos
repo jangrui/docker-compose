@@ -1,0 +1,9 @@
+FROM zabbix/zabbix-agent:centos-latest
+
+USER root
+
+RUN yum makecache && \
+yum update -y && \
+yum install -y tzdata && \
+yum clean all && \
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime

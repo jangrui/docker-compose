@@ -67,7 +67,7 @@ docker-compose -f  agent.yml up -d
 
 ### 创建代理
 
-管理 => agent 代理程序 => 创建代理 => 代理名称：代理服务器主机名 => 代理地址：代理服务器主机名
+![zabbix proxy](https://notes.jangrui.com/_media/zabbix/proxy.gif)
 
 ### 创建主机组
 
@@ -75,7 +75,12 @@ docker-compose -f  agent.yml up -d
 
 ### 创建自动注册
 
-配合 => 动作 => 事件源：自动注册 => 定义名称 => 触发条件：主机元数据 => 包含：youdomain.com => 添加 => 触发条件：agent 代理程序 => 选择代理 => 添加 => 添加 => 操作 => 操作细节 => 新的：添加到主机组、添加主机、关联模板 => 添加
+![自动注册主机](https://notes.jangrui.com/_media/zabbix/auto_registration_host.gif)
+
+- 触发条件
+
+1. 主机名：zabbix_agent 主机名包含字段；
+2. 主机元数据：zabbix_agent.conf 配置 HostMetadataItem ，zabbix-server/proxy 获取对应 key 值所包含字段；
 
 > 如果发现主机后，监测无法获取最新数据，重启 zabbix-proxy 即可
 > 
@@ -87,73 +92,81 @@ docker-compose -f  agent.yml up -d
 
 - 微信告警
 
-管理 => 报警媒介类型 => 创建媒介类型 => 名称：微信报警 => 类型：脚本 => 脚本名称：wechat.sh => 脚本参数 => 添加
+![zabbix 添加微信报警媒介](https://notes.jangrui.com/_media/zabbix/media-types-wechat.gif)
 
 > 脚本参数：
-> - {{ALERT.SENDTO}}
-> - {{ALERT.SUBJECT}}
-> - {{ALERT.MESSAGE}}
-> - 企业微信 CropID
-> - 企业微信 Secret
-> - 企业微信 AgentID
+> - {ALERT.SENDTO}
+> - {ALERT.SUBJECT}
+> - {ALERT.MESSAGE}
+> - 企业微信 ID
+> - 企业微信自建应用 AgentId
+> - 企业微信自建应用 Secret
 > - 企业微信部门 ID
+
+> [zabbix 添加微信报警媒介](https://notes.jangrui.com/#/zabbix/wechat)
 
 - 钉钉告警
 
-管理 => 报警媒介类型 => 创建媒介类型 => 名称：微信报警 => 类型：脚本 => 脚本名称：wechat.sh => 脚本参数 => 添加
+![zabbix 添加钉钉报警媒介](https://notes.jangrui.com/_media/zabbix/media-types-dingding.gif)
 
 > 脚本参数：
-> - {{ALERT.SENDTO}}
-> - {{ALERT.SUBJECT}}
-> - {{ALERT.MESSAGE}}
-> - 钉钉部门自定义机器人 webhook
+> - {ALERT.SENDTO}
+> - {ALERT.SUBJECT}
+> - {ALERT.MESSAGE}
+> - 钉钉部门群自定义机器人 webhook
 
 报警脚本目录：
 zbx_env/usr/lib/zabbix/alertscripts/wechat.sh
 zbx_env/usr/lib/zabbix/alertscripts/dingding.sh
 
+> [zabbix 添加钉钉报警媒介](https://notes.jangrui.com/#/zabbix/dingding)
+
+### 用户添加报警媒介
+
+![zabbix 用户添加报警媒介](https://notes.jangrui.com/_media/zabbix/media-types-wechat-user.gif)
+
 ### 创建自动报警
 
-配置 => 动作 => 事件源：触发器 => 创建动作 => 名称 => 操作 => 持续时间：1m => 标题：故障告警 => 内容 => 操作：新的 => 步骤：1-0 => 操作类型：发送消息 => 发送到群组：添加群组 => 仅送到：微信告警 => 添加 => 恢复操作 => 标题：告警恢复 => 消息内容 => 操作：新的 => 操作类型：通知所有参与者 => 添加
+![zabbix 添加自动报警](https://notes.jangrui.com/_media/zabbix/media-types-wechat-action.gif)
 
-操作消息内容：
-
-```
-⚠️ {EVENT.NAME}
-告警时间：
-    {EVENT.TIME} on {EVENT.DATE}
-告警主机: 
-    {HOST.NAME}
-告警等级: 
-    {EVENT.SEVERITY}
-告警事件: 
-    {EVENT.ID}
-```
-
-恢复操作内容：
-
-```
-✅{EVENT.NAME}
-恢复时间：
-    {EVENT.RECOVERY.TIME} on {EVENT.RECOVERY.DATE}
-告警主机: 
-    {HOST.NAME}
-告警等级: 
-    {EVENT.SEVERITY}
-告警事件: 
-    {EVENT.ID}
-```
-
-管理 => 用户 => 报警媒介 => 添加 => 微信告警 => 收件人：企业微信用户id => 添加
+>操作默认标题：`故障报警：`
+>
+> 操作消息内容：
+> ```
+> ⚠️ {EVENT.NAME}
+> 告警时间：
+>     {EVENT.TIME} on {EVENT.DATE}
+> 告警主机: 
+>     {HOST.NAME}
+> 告警等级: 
+>     {EVENT.SEVERITY}
+> 告警事件: 
+>     {EVENT.ID}
+> ```
+>
+>恢复操作默认标题：`故障报警：`
+>
+> 恢复操作消息内容：
+> ```
+> ✅{EVENT.NAME}
+> 恢复时间：
+>     {EVENT.RECOVERY.TIME} on > {EVENT.RECOVERY.DATE}
+> 告警主机: 
+>     {HOST.NAME}
+> 告警等级: 
+>     {EVENT.SEVERITY}
+> 告警事件: 
+>     {EVENT.ID}
+> ```
 
 ## Grafana 配置
 
 默认安装了 zabbix 插件
 
 > zabbix api: http://zabbix.example.com/api_jsonrpc.php
+> 
+> Grafana 默认账号：admin，密码：admin
 
 - 创建 zabbix 监控图表
 
-1. Configuration => plugins => zabbix => enable
-2. Configuration => Data Sources => Add data source => zabbix => url => http://zabbix-web/api_jsonrpc.php => username: Admin => passwd: zabbix => zabbix version: 4.x => save
-3. Create => Add Query => Group: Discovered hosts => Host: /.*/ => Application: CPU => Item: /Load/ => Save dashboard
+![Grafana 创建 zabbix 监控图表](https://notes.jangrui.com/_media/zabbix/grafana.gif)

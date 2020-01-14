@@ -144,7 +144,7 @@ zbx_env/usr/lib/zabbix/alertscripts/dingding.sh
 >     {EVENT.ID}
 > ```
 >
->恢复操作默认标题：`故障报警：`
+>恢复操作默认标题：`故障恢复：`
 >
 > 恢复操作消息内容：
 > ```

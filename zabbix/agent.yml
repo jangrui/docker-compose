@@ -34,4 +34,6 @@ services:
       com.zabbix.description: "Zabbix agent"
       com.zabbix.company: "Zabbix LLC"
       com.zabbix.component: "zabbix-agentd"
-      com.zabbix.os: "alpine"
+      com.zabbix.os: "centos"
+      # com.zabbix.os: "alpine"
+      # com.zabbix.os: "ubuntu"

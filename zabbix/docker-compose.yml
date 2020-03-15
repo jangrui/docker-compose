@@ -110,6 +110,10 @@ services:
       - ./zbx_env/var/lib/zabbix/ssl/keys:/var/lib/zabbix/ssl/keys
       - ./zbx_env/var/lib/zabbix/export:/var/lib/zabbix/export
       - ./zbx_env/var/log/zabbix:/var/log/zabbix
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+      - /dev:/dev:ro
     labels:
       com.zabbix.description: "Zabbix server with MySQL database support"
       com.zabbix.company: "Zabbix LLC"
@@ -240,6 +244,10 @@ services:
       - ./zbx_env/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
       - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
       - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/proc:ro
+      - /sys:/sys:ro
+      - /dev:/dev:ro
     labels:
       com.zabbix.description: "Zabbix agent"
       com.zabbix.company: "Zabbix LLC"

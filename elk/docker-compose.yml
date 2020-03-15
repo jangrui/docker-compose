@@ -2,57 +2,160 @@ version: '3'
 services:
   elasticsearch:
     build:
-      context: elasticsearch/
+      context: build/elasticsearch/
       args:
         ELK_VERSION: $ELK_VERSION
-    container_name: elk-elastic
+    image: jangrui/elasticsearch:$ELK_VERSION
+    container_name: elk-elasticsearch
+    restart: unless-stopped
     volumes:
-      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
       - elasticsearch:/usr/share/elasticsearch/data
+      # - ./elasticsearch:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
       - "9300:9300"
     environment:
+      TZ: Asia/Shanghai
+      node.name: es
+      cluster.name: docker-cluster
+      discovery.type: single-node
+      network.host: 0.0.0.0
       ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      bootstrap.memory_lock: "true"
       ELASTIC_PASSWORD: changeme
-
-  logstash:
-    build:
-      context: logstash/
-      args:
-        ELK_VERSION: $ELK_VERSION
-    container_name: elk-logstash
-    volumes:
-      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./logstash/pipeline:/usr/share/logstash/pipeline
-    ports:
-      - "5000:5000"
-      - "9600:9600"
-    environment:
-      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
-    depends_on:
-      - elasticsearch
+      # xpack.security.enabled: true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
 
   kibana:
     build:
-      context: kibana/
+      context: build/kibana/
       args:
         ELK_VERSION: $ELK_VERSION
+    image: jangrui/kibana:$ELK_VERSION
     container_name: elk-kibana
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
     volumes:
       - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
       - "5601:5601"
-    depends_on:
-      - elasticsearch
+    environment: 
+      TZ: Asia/Shanghai
 
-  cerebro:
-    image: lmenezes/cerebro
-    container_name: elk-cerebro
+  logstash:
+    build:
+      context: build/logstash/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    image: jangrui/logstash:$ELK_VERSION
+    container_name: elk-logstash
+    restart: unless-stopped
+    # depends_on:
+      # - elasticsearch
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/config/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
     ports:
-      - "9000:9000"
-    depends_on:
-      - elasticsearch
+      - "5044:5044"
+      - "9600:9600"
+    environment:
+      TZ: Asia/Shanghai
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
 
-volumes:
+  redis:
+    build:
+      context: build/redis/
+    image: jangrui/redis:latest
+    container_name: elk-reids
+    restart: unless-stopped
+    hostname: $HOSTNAME
+    environment: 
+      TZ: Asia/Shanghai
+    command: 
+      redis-server --requirepass changeme
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: elk-zk
+    restart: unless-stopped
+    # hostname: $HOSTNAME
+    ports:
+      - 2181:2181
+    volumes: 
+      - zk:/bitnami/zookeeper
+    environment:
+      TZ: Asia/Shanghai
+      ZOO_TICK_TIME: 2000
+      ZOO_INIT_LIMIT: 5
+      ZOO_SYNC_LIMIT: 2
+      ZOO_ENABLE_AUTH: "yes"
+      ZOO_SERVER_USERS: kafka
+      ZOO_SERVER_PASSWORDS: kafka_password
+      # ALLOW_ANONYMOUS_LOGIN: "yes"
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: elk-kafka
+    restart: unless-stopped
+    # hostname: $HOSTNAME
+    user: root
+    ports:
+      - 9092:9092
+    volumes: 
+      - kafka:/bitnami/kafka
+    depends_on: 
+      - zookeeper
+    environment:
+      TZ: Asia/Shanghai
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_USER: kafka
+      KAFKA_ZOOKEEPER_PASSWORD: kafka_password
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://:9092
+      # KAFKA_CREATE_TOPICS: filebeat
+
+  filebeat:
+    build: 
+      context: build/filebeat/
+      args: 
+        ELK_VERSION: $ELK_VERSION
+    image: jangrui/filebeat:$ELK_VERSION
+    container_name: elk-filebeat
+    restart: unless-stopped
+    hostname: $HOSTNAME-filebeat
+    user: root
+    privileged: true
+    environment: 
+      TZ: Asia/Shanghai
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-elasticsearch}
+      KIBANA_HOST: ${KIBANA_HOST:-kibana}
+      ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-changeme}
+    # command: ["--strict.perms=false"]
+    volumes: 
+      - filebeat:/usr/share/filebeat/data
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/container:/var/lib/docker/container:ro
+      - /var/log:/var/log:ro
+      # - ./log:/var/log:ro
+      # # This is needed for filebeat to load jenkins build log path as specified in filebeat.yml
+      # - /var/lib/docker/volumes/jenkins_home/_data/jobs/:/var/lib/docker/volumes/jenkins_home/_data/jobs/:ro
+      # This is needed for filebeat to load logs for auditd module
+      # - /var/log/audit/:/var/log/audit/:ro
+volumes: 
   elasticsearch:
+  zk:
+  kafka:
+  filebeat:

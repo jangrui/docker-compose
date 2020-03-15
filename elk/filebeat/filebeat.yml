@@ -1,0 +1,219 @@
+######################## Filebeat Configuration ############################
+# https://github.com/elastic/beats/blob/master/filebeat/filebeat.reference.yml
+#==========================  Modules configuration =============================
+filebeat.modules:
+- module: system
+  auth:
+    enabled: true
+    # var.paths:
+    # input:
+  syslog:
+    enabled: true
+    # var.paths:
+    # input:
+- module: nginx
+  access:
+    enabled: true
+    # var.paths: ["/var/log/nginx/access.log*"]
+  error:
+    enabled: true
+    # var.paths: ["/var/log/nginx/error.log*"]
+# - module: apache
+#   access:
+#     enabled: true
+#     # var.paths:
+#     # input:
+#   error:
+#     enabled: true
+#     # var.paths:
+#     # input:
+# - module: mysql
+#   error:
+#     enabled: true
+#     # var.paths:
+#     # input:
+#   slowlog:
+#     enabled: true
+#     # var.paths:
+#     # input:
+# - module: mongodb
+#   log:
+#     enabled: true
+#     # var.paths:
+#     # input:
+# - module: haproxy
+#   log:
+#     enabled: true
+#     #var.input:
+#     #var.paths:
+# # - module: redis
+# #   log:
+# #     enabled: true
+# #     # var.paths: ["/var/log/redis/redis-server.log*"]
+# #   slowlog:
+# #     enabled: true
+# #     # var.hosts: ["localhost:6379"]
+# #     # var.password:
+# - module: postgresql
+#   log:
+#     enabled: true
+#     #var.paths:
+#     #input:
+# - module: osquery
+#   result:
+#     enabled: true
+#     # var.paths:
+#     # var.use_namespace: true
+# - module: nats
+#   log:
+#     enabled: true
+#     #var.paths:
+# - module: elasticsearch
+#   server:
+#     enabled: true
+#     #var.paths:
+#   gc:
+#     enabled: true
+#     #var.paths:
+#   audit:
+#     enabled: true
+#     #var.paths:
+#   slowlog:
+#     enabled: true
+#     #var.paths:
+#   deprecation:
+#     enabled: true
+#     #var.paths:
+# - module: logstash
+#   log:
+#     enabled: true
+#     # var.paths:
+#   slowlog:
+#     enabled: true
+#     # var.paths:
+# - module: kibana
+#   log:
+#     enabled: true
+#     #var.paths:
+# - module: kafka
+#   log:
+#     enabled: true
+#     #var.kafka_home:
+#     #var.paths:
+# - module: iis
+#   access:
+#     enabled: true
+#     #var.paths:
+#     #input:
+#   error:
+#     enabled: true
+#     #var.paths:
+#     #input:
+# - module: icinga
+#   main:
+#     enabled: true
+#     #var.paths:
+#     #input:
+#   debug:
+#     enabled: true
+#     #var.paths:
+#     #input:
+#   startup:
+#     enabled: true
+#     #var.paths:
+#     #input:
+# - module: auditd
+#   log:
+#     enabled: true
+#     #var.paths:
+#     #input:
+#=========================== Filebeat inputs =============================
+# filebeat.inputs:
+# - type: docker
+#   enabled: true
+#   containers:
+#     stream: all # can be all, stdout or stderr
+#     ids:
+#       - '*'
+#   # exclude_lines: ["^\\s+[\\-`('.|_]"]  # drop asciiart lines
+#   # multiline.pattern: "^\t|^[[:space:]]+(at|...)|^Caused by:"
+#   # multiline.match: after
+# - type: log
+#   paths:
+#     - /var/log/nginx/access.log
+#   tail_files: true
+#   fields_under_root: true
+#   fields:
+#     type: nginx_access
+# - type: log
+#   paths:
+#     - /var/log/nginx/error.log
+#   tail_files: true
+#   fields_under_root: true
+#   fields:
+#     type: nginx_error
+# - type: log
+#   paths:
+#     - /var/log/secure
+#   tail_files: true
+#   fields_under_root: true
+#   fields:
+#     type: syslog
+# - type: container
+#   stream: stdout
+#   paths:
+#     - '/var/lib/docker/containers/*/*.log'
+
+#========================== Filebeat autodiscover ==============================
+# See this URL on how to run Apache2 Filebeat module: # https://www.elastic.co/guide/en/beats/filebeat/current/running-on-docker.html
+# filebeat.autodiscover:
+#   providers:
+#     - type: docker
+#       # https://www.elastic.co/guide/en/beats/filebeat/current/configuration-autodiscover-hints.html
+#       # This URL alos contains instructions on multi-line logs
+#       hints.enabled: true
+
+# #================================ Processors ===================================
+# processors:
+# - add_cloud_metadata: ~
+# - add_docker_metadata: ~
+# - add_locale:
+#     format: offset
+# - add_host_metadata:
+#     netinfo.enabled: true
+
+# #========================== Elasticsearch output ===============================
+# output.elasticsearch:
+#   hosts: ["${ELASTICSEARCH_HOST}:9200"]
+#   username: ${ELASTICSEARCH_USERNAME}
+#   password: ${ELASTICSEARCH_PASSWORD}
+
+# #========================== Logstash output ===============================
+# output.logstash:
+#   hosts: ["logstash:5044"]
+
+# #========================== Redis output ===============================
+output.redis:
+    hosts: [ "redis" ]
+    password: "changeme"
+    key: 'filebeat'
+
+# ========================== Redis output ===============================
+# output.kafka:
+#   hosts: [ "kafka:9092" ]
+#   topic: filebeat
+
+# #============================== Dashboards =====================================
+# setup.dashboards:
+#   enabled: true
+
+# #============================== Kibana =========================================
+# setup.kibana:
+#   host: "${KIBANA_HOST}:80"
+#   username: ${ELASTICSEARCH_USERNAME}
+#   password: ${ELASTICSEARCH_PASSWORD}
+
+# #============================== Xpack Monitoring ===============================
+# xpack.monitoring:
+#   enabled: true
+#   elasticsearch:
